@@ -97,4 +97,8 @@ contract VotingSystem {
 
         winnerName_ = candidates[winningCandidate()].name;
     }
+
+    function getAllCandidates() public view returns (Candidate[] memory) {
+        return candidates;
+    }
 }
