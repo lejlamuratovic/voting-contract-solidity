@@ -17,13 +17,15 @@ contract VotingSystem {
     mapping(address => Voter) public voters; // mapping of voter addresses to their voting status
     Candidate[] public candidates;
     bool public electionInProgress; // tracks if the election is currently active
+    uint public electionEndDate; // timestamp for when the election is supposed to end
 
     event VoterRegistered(address voter);
     event VoteCast(address voter);
 
-    // initialize the list of candidates by providing names
-    constructor(string[] memory candidateNames) {
+    // initialize the list of candidates by providing names and an end date
+    constructor(string[] memory candidateNames, uint endDate) {
         electionOfficial = msg.sender;
+        electionEndDate = endDate;
 
         for (uint i = 0; i < candidateNames.length; i++) {
             candidates.push(Candidate({
@@ -32,7 +34,7 @@ contract VotingSystem {
             }));
         }
 
-        electionInProgress = false;  // election not active initially until specified explicity later
+        electionInProgress = false;
     }
 
     modifier onlyOfficial() {
@@ -40,14 +42,16 @@ contract VotingSystem {
         _;
     }
 
-    modifier isEligible() {
-        require(voters[msg.sender].eligible && !voters[msg.sender].voted, "Voter must be eligible and not have voted.");
+    modifier isEligible(address voterAddress) {
+        require(voters[voterAddress].eligible && !voters[voterAddress].voted, "Voter must be eligible and not have voted.");
         require(electionInProgress, "Voting is not possible while election is not active.");
         _;
     }
 
-    // to start the election
+    // to start the election, check if the end date has not passed
     function startElection() public onlyOfficial {
+        require(block.timestamp <= electionEndDate, "Cannot start the election after election's end date.");
+
         electionInProgress = true;
     }
 
@@ -59,18 +63,16 @@ contract VotingSystem {
     // to register a voter
     function registerVoter(address voter) public onlyOfficial {
         require(!voters[voter].eligible, "Voter is already registered.");
-
         voters[voter] = Voter(true, false, 0);
-
         emit VoterRegistered(voter);
     }
 
     // to vote for a candidate
-    function vote(uint candidateIndex) public isEligible {
+    function vote(uint candidateIndex, address voterAddress) public isEligible(voterAddress) {
         require(candidateIndex < candidates.length, "Invalid candidate.");
 
-        voters[msg.sender].voted = true;
-        voters[msg.sender].voteIndex = candidateIndex;
+        voters[voterAddress].voted = true;
+        voters[voterAddress].voteIndex = candidateIndex;
 
         candidates[candidateIndex].voteCount += 1;
         
@@ -80,9 +82,7 @@ contract VotingSystem {
     // to determine the candidate with the most votes
     function winningCandidate() public view returns (uint winningCandidate_) {
         require(!electionInProgress, "Election results are not available until the election ends.");
-
         uint winningVoteCount = 0;
-
         for (uint p = 0; p < candidates.length; p++) {
             if (candidates[p].voteCount > winningVoteCount) {
                 winningVoteCount = candidates[p].voteCount;
@@ -94,7 +94,6 @@ contract VotingSystem {
     // to retrieve the name of the winning candidate
     function winnerName() public view returns (string memory winnerName_) {
         require(!electionInProgress, "Election results are not available until the election ends.");
-
         winnerName_ = candidates[winningCandidate()].name;
     }
 
