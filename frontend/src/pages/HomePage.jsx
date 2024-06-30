@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 
-import { CustomAlert, LoadingIndicator } from "../components";
+import { CustomAlert, LoadingIndicator, ElectionResults } from "../components";
 
 import { Radio, RadioGroup, FormControlLabel, FormControl, FormLabel, Button, Paper, Typography } from "@mui/material";
 
-import { getCandidates, vote, getElectionStatus } from "../scripts/contractInteraction";
+import { getCandidates, vote, getElectionStatus, getWinnerName, getElectionEndDate } from "../scripts/contractInteraction";
 
 const HomePage = () => {
   const [candidates, setCandidates] = useState([]);
@@ -12,15 +12,23 @@ const HomePage = () => {
   const [selectedCandidate, setSelectedCandidate] = useState("");
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: "", type: "" });
+  const [winnerName, setWinnerName] = useState("");
 
   useEffect(() => {
-    const fetchElectionStatus = async () => {
+    const fetchElectionStatusAndWinner = async () => {
         const status = await getElectionStatus();
+        const endDate = await getElectionEndDate();
+        const now = Math.floor(Date.now() / 1000);
 
         setElectionStatus(status ? "In Progress" : "Not Started");
+
+        if (!status && endDate && now > parseInt(endDate)) {
+            const name = await getWinnerName();
+            setWinnerName(name);
+        }
     };
 
-    fetchElectionStatus();
+    fetchElectionStatusAndWinner();
   }, []);
 
   useEffect(() => {
@@ -65,11 +73,7 @@ const HomePage = () => {
     try {
         const transaction = await vote(selectedCandidate);
 
-        if (transaction.status) {
-            setAlert({ show: true, message: "Your vote has been cast successfully.", type: "success" });
-        } else {
-            setAlert({ show: true, message: "Failed to cast your vote.", type: "error" });
-        }
+        setAlert({ show: true, message: "Your vote has been cast successfully.", type: "success" });
     } catch (error) {
         console.error(error);
 
@@ -78,6 +82,10 @@ const HomePage = () => {
 
     setLoading(false);
   };
+
+  if (winnerName) {
+    return <ElectionResults />;
+  }
 
   return (
     <>

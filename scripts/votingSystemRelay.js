@@ -3,15 +3,16 @@ const { ethers } = require("hardhat");
 console.log("Relaying transactions...");
 
 const relayAddress = "0x6cE199461b100B5E781273474DA88Ba6275cbDAC";
-const contractAddress = "0x79A2D8B10AbD0a56FA62B43cb45244eB5D7a1695";
+const contractAddress = "0xbd51b509558e8a983CF7BD3021De377884ec08d0";
 
 // initialize contract 
 const abi = [
     "function registerVoter(address)",
-    "function vote(uint)",
+    "function vote(uint, address)",
     "function startElection()",
     "function endElection()",
     "function getAllCandidates() view returns (tuple(string,uint)[])", 
+    "function winnerName() view returns (string)",
 ];
 
 const contractInterface = new ethers.Interface(abi);
@@ -70,7 +71,7 @@ async function relayTransaction(methodName, args) {
 
 async function main() {
     try {
-        await relayTransaction("getAllCandidates", []);
+        await relayTransaction("vote", [0, "0xe2F553E3Ae2B7F6F63bFe4a7c95AADb43cc76Af5"]);
     } catch (error) {
         console.error("Error during transactions: ", error);
     }
